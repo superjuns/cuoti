@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>错题收集助手 | 拍照识别 + 云端存储</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            font-family: 'Segoe UI', 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* 主容器 */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* 头部 */
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.9);
+            margin-top: 8px;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 32px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        /* 上传区域 */
+        .upload-area {
+            border: 2px dashed #c4b5fd;
+            border-radius: 24px;
+            padding: 32px 20px;
+            text-align: center;
+            background: #faf5ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f3e8ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 12px 0;
+            transition: 0.2s;
+        }
+
+        .upload-btn:active {
+            transform: scale(0.97);
+        }
+
+        .camera-options {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .camera-btn {
+            background: #f0e6ff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* 图片预览 */
+        .preview-area {
+            margin-top: 16px;
+            display: none;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 16px;
+            object-fit: contain;
+            background: #f0f0f0;
+            margin-top: 12px;
+        }
+
+        /* OCR 状态 */
+        .ocr-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #f0fdf4;
+            border-radius: 60px;
+            margin-top: 16px;
+            font-size: 0.9rem;
+        }
+
+        .ocr-status.loading {
+            background: #fffbeb;
+        }
+
+        .ocr-status.error {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 识别结果 */
+        .result-area {
+            margin-top: 20px;
+        }
+
+        .result-label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .result-text {
+            background: #f9fafb;
+            border-radius: 20px;
+            padding: 16px;
+            font-size: 1rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+        }
+
+        .edit-area {
+            margin-top: 16px;
+        }
+
+        .edit-textarea {
+            width: 100%;
+            padding: 14px;
+            border-radius: 20px;
+            border: 1px solid #d1d5db;
+            font-size: 0.95rem;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+        }
+
+        .edit-textarea:focus {
+            border-color: #764ba2;
+            box-shadow: 0 0 0 2px rgba(118,75,162,0.2);
+        }
+
+        /* 提交按钮 */
+        .submit-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 60px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .submit-btn:active {
+            transform: scale(0.98);
+        }
+
+        .submit-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* 反馈消息 */
+        .message {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .message.info {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        /* 历史记录区域 */
+        .history-card {
+            background: white;
+            border-radius: 32px;
+            padding: 20px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .history-header h3 {
+            font-size: 1.2rem;
+            color: #374151;
+        }
+
+        .clear-btn {
+            background: #f3f4f6;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .history-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: #f9fafb;
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            font-size: 0.85rem;
+        }
+
+        .history-item .time {
+            font-size: 0.7rem;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        .history-item .content {
+            color: #374151;
+            word-break: break-word;
+        }
+
+        .empty-history {
+            text-align: center;
+            color: #9ca3af;
+            padding: 20px;
+        }
+
+        /* 工具类 */
+        .hidden {
+            display: none;
+        }
+
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        hr {
+            margin: 16px 0;
+            border: none;
+            border-top: 1px solid #e5e7eb;
+        }
+    </style>
+    <!-- 引入 Tesseract.js OCR 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>
+            <span>📸</span> 错题收集助手
+        </h1>
+        <p>拍照或上传图片 → 自动识别文字 → 一键提交云端错题集</p>
+    </div>
+
+    <!-- 主卡片：拍照/上传 + OCR识别 -->
+    <div class="card">
+        <!-- 上传触发区 -->
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📷 📂</div>
+            <p style="color: #6b7280; margin-bottom: 8px;">点击上传图片，或使用相机拍摄</p>
+            <div class="camera-options">
+                <button class="camera-btn" id="uploadBtn">📁 相册上传</button>
+                <button class="camera-btn" id="cameraBtn">📸 拍照上传</button>
+            </div>
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/jpg,image/heic" capture="environment" class="file-input">
+            <p style="font-size: 0.7rem; color: #9ca3af; margin-top: 8px;">支持 JPG、PNG 格式</p>
+        </div>
+
+        <!-- 图片预览区 -->
+        <div id="previewArea" class="preview-area">
+            <div class="flex-between" style="margin-bottom: 8px;">
+                <span style="font-weight: 500;">📸 图片预览</span>
+                <button id="clearPreviewBtn" style="background: none; border: none; color: #9ca3af; cursor: pointer;">✕ 清除</button>
+            </div>
+            <img id="previewImg" class="preview-img" alt="预览">
+        </div>
+
+        <!-- OCR 状态提示 -->
+        <div id="ocrStatus" class="hidden"></div>
+
+        <!-- 识别结果区域 -->
+        <div id="resultArea" class="result-area hidden">
+            <div class="result-label">📝 识别出的错题文字：</div>
+            <div id="recognizedText" class="result-text"></div>
+            
+            <div class="edit-area">
+                <div class="result-label" style="margin-top: 8px;">✏️ 如需修改，可直接编辑：</div>
+                <textarea id="editTextarea" class="edit-textarea" rows="3" placeholder="识别文字将显示在这里，您可以手动修正..."></textarea>
+            </div>
+        </div>
+
+        <!-- 提交按钮 -->
+        <button id="submitBtn" class="submit-btn" disabled>
+            <span>📤</span> 提交至错题集
+        </button>
+
+        <!-- 全局反馈消息 -->
+        <div id="messageBox"></div>
+    </div>
+
+    <!-- 历史记录卡片 -->
+    <div class="history-card">
+        <div class="history-header">
+            <h3>📋 最近提交记录</h3>
+            <button id="clearHistoryBtn" class="clear-btn">清空记录</button>
+        </div>
+        <div id="historyList" class="history-list">
+            <div class="empty-history">暂无提交记录</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ------------------- 配置 -------------------
+    // 目标 API 地址 (用户指定的后端错题收集接口)
+    const API_ENDPOINT = 'https://quickform.cn/api/auotd4g9jy';
+    
+    // 本地存储 Key (用于存储提交历史)
+    const HISTORY_KEY = 'mistake_collection_history';
+
+    // ------------------- DOM 元素 -------------------
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const previewArea = document.getElementById('previewArea');
+    const previewImg = document.getElementById('previewImg');
+    const clearPreviewBtn = document.getElementById('clearPreviewBtn');
+    const ocrStatusDiv = document.getElementById('ocrStatus');
+    const resultArea = document.getElementById('resultArea');
+    const recognizedTextDiv = document.getElementById('recognizedText');
+    const editTextarea = document.getElementById('editTextarea');
+    const submitBtn = document.getElementById('submitBtn');
+    const messageBox = document.getElementById('messageBox');
+    const historyListDiv = document.getElementById('historyList');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+    // ------------------- 全局状态 -------------------
+    let currentImageFile = null;          // 当前待处理的图片文件
+    let currentRecognizedRawText = '';    // OCR 识别的原始文本
+    let isOcrProcessing = false;           // 是否正在 OCR 处理中
+
+    // ------------------- 历史记录管理 -------------------
+    // 加载历史记录
+    function loadHistory() {
+        const stored = localStorage.getItem(HISTORY_KEY);
+        if (stored) {
+            try {
+                return JSON.parse(stored);
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
+    }
+
+    // 保存历史记录
+    function saveHistory(history) {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    }
+
+    // 添加一条历史记录
+    function addHistoryItem(text, status = 'success') {
+        const history = loadHistory();
+        const newItem = {
+            id: Date.now(),
+            text: text.length > 100 ? text.substring(0, 100) + '…' : text,
+            fullText: text,
+            timestamp: new Date().toLocaleString('zh-CN'),
+            status: status
+        };
+        history.unshift(newItem); // 最新的在最上面
+        // 保留最近 20 条记录
+        if (history.length > 20) history.pop();
+        saveHistory(history);
+        renderHistory();
+    }
+
+    // 渲染历史记录
+    function renderHistory() {
+        const history = loadHistory();
+        if (history.length === 0) {
+            historyListDiv.innerHTML = '<div class="empty-history">暂无提交记录</div>';
+            return;
+        }
+        historyListDiv.innerHTML = history.map(item => `
+            <div class="history-item">
+                <div class="time">📅 ${item.timestamp}</div>
+                <div class="content">${escapeHtml(item.text)}</div>
+            </div>
+        `).join('');
+    }
+
+    // 清空历史记录
+    function clearHistory() {
+        if (confirm('确定要清空所有提交记录吗？')) {
+            saveHistory([]);
+            renderHistory();
+            showMessage('历史记录已清空', 'info');
+        }
+    }
+
+    // ------------------- 辅助函数 -------------------
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function showMessage(msg, type = 'info') {
+        messageBox.innerHTML = `<div class="message ${type}">${escapeHtml(msg)}</div>`;
+        setTimeout(() => {
+            if (messageBox.innerHTML.includes(msg)) {
+                messageBox.innerHTML = '';
+            }
+        }, 4000);
+    }
+
+    // 重置界面（清除预览、识别结果、状态）
+    function resetUI() {
+        // 清除预览
+        previewArea.classList.add('hidden');
+        previewImg.src = '';
+        currentImageFile = null;
+        // 隐藏识别区域
+        resultArea.classList.add('hidden');
+        recognizedTextDiv.innerHTML = '';
+        editTextarea.value = '';
+        currentRecognizedRawText = '';
+        // 重置提交按钮状态
+        submitBtn.disabled = true;
+        // 隐藏 OCR 状态
+        ocrStatusDiv.classList.add('hidden');
+        ocrStatusDiv.innerHTML = '';
+        isOcrProcessing = false;
+    }
+
+    // 显示 OCR 处理状态
+    function showOcrStatus(message, isLoading = true, isError = false) {
+        ocrStatusDiv.classList.remove('hidden');
+        ocrStatusDiv.className = 'ocr-status';
+        if (isError) {
+            ocrStatusDiv.classList.add('error');
+        } else if (isLoading) {
+            ocrStatusDiv.classList.add('loading');
+        }
+        ocrStatusDiv.innerHTML = isLoading 
+            ? `<div class="spinner"></div><span>${message}</span>`
+            : `<span>✅ ${message}</span>`;
+        if (!isLoading && !isError) {
+            setTimeout(() => {
+                if (ocrStatusDiv.innerHTML.includes(message)) {
+                    ocrStatusDiv.classList.add('hidden');
+                }
+            }, 3000);
+        }
+    }
+
+    // ------------------- 核心 OCR 识别 -------------------
+    async function performOCR(imageFile) {
+        if (!imageFile) {
+            showMessage('请先选择一张图片', 'error');
+            return false;
+        }
+
+        isOcrProcessing = true;
+        submitBtn.disabled = true;
+        showOcrStatus('🔍 OCR 智能识别中，请稍候...', true, false);
+        
+        try {
+            // 使用 Tesseract.js 进行识别，支持中英文混合
+            const { data: { text } } = await Tesseract.recognize(
+                imageFile,
+                'chi_sim+eng',  // 简体中文 + 英文
+                {
+                    logger: (m) => {
+                        // 可选的进度日志，不显示避免干扰
+                        console.log(m);
+                    }
+                }
+            );
+            
+            const cleanedText = text.trim() || '未能识别出有效文字，请尝试更清晰的图片或手动输入。';
+            currentRecognizedRawText = cleanedText;
+            
+            // 显示识别结果
+            recognizedTextDiv.innerHTML = escapeHtml(cleanedText);
+            editTextarea.value = cleanedText;
+            resultArea.classList.remove('hidden');
+            
+            showOcrStatus('识别完成！可手动修正后提交', false, false);
+            // 识别完成后启用提交按钮（必须有内容）
+            if (cleanedText && cleanedText !== '未能识别出有效文字，请尝试更清晰的图片或手动输入。') {
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.disabled = true;
+                showMessage('识别文字为空，请重新上传更清晰的图片', 'error');
+            }
+            return true;
+        } catch (err) {
+            console.error('OCR 识别错误:', err);
+            showOcrStatus('识别失败，请检查图片或重试', false, true);
+            showMessage('OCR 识别失败：' + (err.message || '未知错误'), 'error');
+            currentRecognizedRawText = '';
+            resultArea.classList.add('hidden');
+            submitBtn.disabled = true;
+            return false;
+        } finally {
+            isOcrProcessing = false;
+        }
+    }
+
+    // ------------------- 提交数据到后端 API -------------------
+    async function submitToBackend() {
+        // 获取最终提交的文本（优先取用户编辑后的内容）
+        let finalText = editTextarea.value.trim();
+        if (!finalText) {
+            finalText = currentRecognizedRawText.trim();
+        }
+        if (!finalText || finalText === '未能识别出有效文字，请尝试更清晰的图片或手动输入。') {
+            showMessage('没有有效的错题内容，请重新识别或手动输入', 'error');
+            return;
+        }
+
+        // 禁用提交按钮，防止重复提交
+        submitBtn.disabled = true;
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<div class="spinner" style="width:16px;height:16px;"></div> 提交中...';
+
+        // 构建 POST 请求数据
+        // 根据 API 预期格式，构建 JSON 数据
+        const postData = {
+            text: finalText,           // 错题文本内容
+            source: 'web_camera_ocr',  // 标记来源
+            timestamp: new Date().toISOString(),
+            type: 'mistake_question'
+        };
+
+        try {
+            // 发送 POST 请求到指定的 quickform 接口
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                mode: 'cors',           // 允许跨域
+                body: JSON.stringify(postData)
+            });
+
+            let result = null;
+            let success = false;
+            
+            if (response.ok) {
+                success = true;
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    result = { message: '请求成功，但响应解析异常' };
+                }
+                showMessage('✅ 错题已成功提交至云端错题集！', 'success');
+                // 添加到历史记录
+                addHistoryItem(finalText, 'success');
+                // 提交成功后重置界面，鼓励继续收集
+                resetUI();
+                // 刷新历史显示
+                renderHistory();
+            } else {
+                // 处理非 2xx 状态码
+                const errorText = await response.text();
+                console.error('API 响应错误:', response.status, errorText);
+                showMessage(`提交失败 (${response.status})，请稍后重试`, 'error');
+                addHistoryItem(finalText, 'failed');
+                submitBtn.disabled = false; // 失败后可重试
+                submitBtn.innerHTML = originalBtnText;
+                // 保留数据，不重置UI
+                return;
+            }
+        } catch (err) {
+            console.error('网络请求错误:', err);
+            showMessage('网络错误，无法连接到后端。请检查网络后重试。', 'error');
+            addHistoryItem(finalText, 'failed');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+            return;
+        }
+        
+        // 成功后将按钮恢复禁用（因为已重置界面）
+        if (submitBtn.disabled === false) {
+            submitBtn.disabled = true;
+        }
+        submitBtn.innerHTML = originalBtnText;
+    }
+
+    // ------------------- 图片处理流程 (文件对象) -------------------
+    async function handleImageFile(file) {
+        if (!file) return;
+        
+        // 校验文件类型
+        if (!file.type.startsWith('image/')) {
+            showMessage('请选择图片文件（JPG/PNG）', 'error');
+            return;
+        }
+        
+        // 限制文件大小 (最大 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            showMessage('图片过大（超过10MB），请压缩后重试', 'error');
+            return;
+        }
+        
+        resetUI();
+        currentImageFile = file;
+        
+        // 显示预览
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImg.src = e.target.result;
+            previewArea.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+        
+        // 执行 OCR 识别
+        await performOCR(file);
+    }
+    
+    // ------------------- 触发文件选择 (拍照/相册) -------------------
+    function triggerFileInput(acceptType = 'image/*', capture = false) {
+        // 重置 input 以允许重复选择同一文件
+        fileInput.value = '';
+        if (capture) {
+            fileInput.setAttribute('capture', 'environment');
+        } else {
+            fileInput.removeAttribute('capture');
+        }
+        fileInput.click();
+    }
+    
+    // 文件选择变化处理
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleImageFile(file);
+        }
+    });
+    
+    // 上传按钮（相册）
+    uploadBtn.addEventListener('click', () => {
+        triggerFileInput('image/*', false);
+    });
+    
+    // 拍照按钮（开启摄像头）
+    cameraBtn.addEventListener('click', () => {
+        triggerFileInput('image/*', true);
+    });
+    
+    // 清除预览
+    clearPreviewBtn.addEventListener('click', () => {
+        resetUI();
+        fileInput.value = '';
+        showMessage('已清除当前图片', 'info');
+    });
+    
+    // 提交按钮事件
+    submitBtn.addEventListener('click', () => {
+        if (isOcrProcessing) {
+            showMessage('请等待识别完成后再提交', 'error');
+            return;
+        }
+        if (!currentImageFile && !editTextarea.value.trim()) {
+            showMessage('请先上传图片并完成文字识别', 'error');
+            return;
+        }
+        submitToBackend();
+    });
+    
+    // 清空历史记录
+    clearHistoryBtn.addEventListener('click', clearHistory);
+    
+    // 监听编辑区域的变化：如果用户手动编辑了内容，重新启用提交按钮
+    editTextarea.addEventListener('input', () => {
+        if (editTextarea.value.trim()) {
+            submitBtn.disabled = false;
+            currentRecognizedRawText = editTextarea.value;
+        } else {
+            if (currentRecognizedRawText) {
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.disabled = true;
+            }
+        }
+    });
+    
+    // 可选：点击上传区域也可以触发上传
+    uploadArea.addEventListener('click', (e) => {
+        // 防止点击到内部按钮时重复触发
+        if (e.target.tagName === 'BUTTON' || e.target.closest('.camera-btn')) return;
+        triggerFileInput('image/*', false);
+    });
+    
+    // ------------------- 初始化历史记录显示 -------------------
+    renderHistory();
+    
+    // 显示初始引导提示
+    setTimeout(() => {
+        showMessage('✨ 使用说明：拍摄或上传错题图片 → 自动识别文字 → 确认/编辑 → 一键提交', 'info');
+    }, 500);
+</script>
+</body>
+</html>
