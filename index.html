@@ -841,7 +841,6 @@
         return "1";
     }
 
-    // 修改后的生成变式题函数，生成12道题并指定第5-6和第11-12题的类型
     async function generateVariantsForCard(cardId, originalText, selectedModes, questionType) {
         const card = mistakeList.find(m => m.id === cardId);
         if (!card) throw new Error("错题卡片不存在");
@@ -859,58 +858,27 @@
         if (selectedModes.includes("综合变化")) finalModes = ["情境转换", "数据修改", "跨学科", "提升难度", "降低难度"];
         let extra = ""; if (questionType === "选择题") extra = "每道选择题必须提供3个选项，格式：A. ... B. ... C. ...";
         let textbookConstraint = ""; if (textbook) textbookConstraint = `【教材参考（北师大2024版${gradeName}）】\n${textbook.substring(0, 3000)}\n请严格依据教材知识点和例题风格。`; else textbookConstraint = `【教材版本】北师大2024版${gradeName}，按该年级通用标准。`;
-        
-        // 构建详细的题目生成规则，要求生成12道题
-        let prompt = `你是一位小学数学教师。请根据以下错题，生成12道变式练习题，从1到12编号，每道题独立成行。
+        let prompt = `你是一位小学数学教师。请根据以下错题，生成3道变式练习题。
 
-具体要求：
-1. 第5题和第6题必须是“两位数加减两位数”的计算题（如：45 + 28 = ?  或  73 - 36 = ?）。
-2. 第11题和第12题必须是“竖式计算”形式的两位数加减两位数（展示为竖式格式，例如：
-     45
-   + 28
-   ——
-      ?
-   ），每题单独列出。
-3. 其余题目（1-4, 7-10）可以自由设计，但题型必须为 ${questionType}，且难度符合${gradeName}学生水平。
-4. 变化方式：${finalModes.join('、')}
-5. 不要输出任何额外解释、评语或标题。
-6. 选择题必须提供3个选项（A. B. C.）。
+变化方式：${finalModes.join('、')}
+题型：${questionType}
+${extra}
 
-原题参考：${effectiveText ? effectiveText : '根据图片内容生成'}
+要求：
+1. 每道题独立成行，使用序号1. 2. 3. 开头
+2. 不要输出任何额外解释、评语或标题
+3. 题目难度和内容要符合${gradeName}学生的认知水平
+4. 直接输出题目，不要其他文字
 
-请严格按照上述要求生成12道题。`;
-        
+${effectiveText ? `原题内容：${effectiveText}` : '请根据图片中的题目内容生成变式题'}`;
         const result = await callDoubaoChatGenerate(prompt, card.image_base64, textbookConstraint, unitInfo);
         const lines = result.split(/\r?\n/);
         const questions = [];
         let currentQuestion = "";
-        for (let line of lines) { 
-            if (line.trim().match(/^\d+\./)) { 
-                if (currentQuestion) questions.push(currentQuestion); 
-                currentQuestion = line; 
-            } else if (currentQuestion) { 
-                currentQuestion += "\n" + line; 
-            } 
-        }
+        for (let line of lines) { if (line.trim().match(/^\d+\./)) { if (currentQuestion) questions.push(currentQuestion); currentQuestion = line; } else if (currentQuestion) { currentQuestion += "\n" + line; } }
         if (currentQuestion) questions.push(currentQuestion);
-        // 确保至少有12道题，不足则补充默认题目
-        while (questions.length < 12) {
-            questions.push(`题目待补充`);
-        }
         const cardIndex = mistakeList.findIndex(m => m.id === cardId);
-        if (cardIndex !== -1) { 
-            mistakeList[cardIndex].variants = { 
-                content: result, 
-                questions: questions, 
-                illustrations: [], 
-                modes: finalModes, 
-                type: questionType, 
-                visible: true, 
-                gradeUsed: gradeName, 
-                textbookUsed: !!textbook, 
-                hasImages: false 
-            }; 
-        }
+        if (cardIndex !== -1) { mistakeList[cardIndex].variants = { content: result, questions: questions, illustrations: [], modes: finalModes, type: questionType, visible: true, gradeUsed: gradeName, textbookUsed: !!textbook, hasImages: false }; }
         return { result, questions };
     }
 
@@ -1005,7 +973,7 @@
         const cancelBtn = document.querySelector(`.cancel-config[data-id="${cardId}"]`);
         const chkGroup = document.getElementById(`modes-${cardId}`);
         if (chkGroup) { const randomChk = chkGroup.querySelector('input[value="随机选择"]'); const others = chkGroup.querySelectorAll('input[value]:not([value="随机选择"])'); others.forEach(cb => cb.addEventListener('change', () => { if(cb.checked && randomChk && randomChk.checked) randomChk.checked = false; })); if(randomChk) randomChk.addEventListener('change', () => { if(randomChk.checked) others.forEach(cb => { if(cb.checked) cb.checked = false; }); }); }
-        if (confirmBtn) { confirmBtn.addEventListener('click', async () => { const selected = Array.from(document.querySelectorAll(`#modes-${cardId} input:checked`)).map(cb => cb.value); if (selected.length === 0) { alert("请至少选择一种变化方式"); return; } const qType = document.getElementById(`type-${cardId}`).value; const panel = document.querySelector(`.variant-config-panel[data-config-id="${cardId}"]`); if (panel) panel.remove(); const cardDiv = document.querySelector(`.mistake-card[data-id="${cardId}"]`); const loadingDiv = document.createElement('div'); loadingDiv.className = 'variant-inline'; loadingDiv.innerHTML = '<div class="variant-header-inline"><span>🤖 正在生成12道变式题（含两位数加减及竖式）...</span><div class="spinner"></div></div>'; cardDiv.appendChild(loadingDiv); try { await generateVariantsForCard(cardId, originalText, selected, qType); loadingDiv.remove(); applyFilterAndRender(); } catch (err) { loadingDiv.innerHTML = `<div class="variant-header-inline"><span style="color:red;">❌ ${err.message}</span></div>`; setTimeout(() => loadingDiv.remove(), 2000); } }); }
+        if (confirmBtn) { confirmBtn.addEventListener('click', async () => { const selected = Array.from(document.querySelectorAll(`#modes-${cardId} input:checked`)).map(cb => cb.value); if (selected.length === 0) { alert("请至少选择一种变化方式"); return; } const qType = document.getElementById(`type-${cardId}`).value; const panel = document.querySelector(`.variant-config-panel[data-config-id="${cardId}"]`); if (panel) panel.remove(); const cardDiv = document.querySelector(`.mistake-card[data-id="${cardId}"]`); const loadingDiv = document.createElement('div'); loadingDiv.className = 'variant-inline'; loadingDiv.innerHTML = '<div class="variant-header-inline"><span>🤖 正在生成变式题...</span><div class="spinner"></div></div>'; cardDiv.appendChild(loadingDiv); try { await generateVariantsForCard(cardId, originalText, selected, qType); loadingDiv.remove(); applyFilterAndRender(); } catch (err) { loadingDiv.innerHTML = `<div class="variant-header-inline"><span style="color:red;">❌ ${err.message}</span></div>`; setTimeout(() => loadingDiv.remove(), 2000); } }); }
         if (cancelBtn) cancelBtn.addEventListener('click', () => { document.querySelector(`.variant-config-panel[data-config-id="${cardId}"]`)?.remove(); });
     }
 
